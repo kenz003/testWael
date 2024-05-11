@@ -1,0 +1,79 @@
+name: CI/CD Pipeline 
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    # environment: Test Sample Secrets
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Tests and setup for Laravel
+      - name: Setup PHP with extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, curl, gd, xml, zip
+          coverage: none
+
+      - name: Install Composer dependencies (Laravel)
+        run: composer install --prefer-dist --no-progress 
+        working-directory: ./api
+
+      - name: Setup Laravel Environment
+        run: |
+          ls -la  # List all files in the directory to check for .env.example
+          cp .env.example .env
+          php artisan key:generate
+        working-directory: ./api
+
+      - name: Run Laravel migrations (using SQLite for testing)
+        run: |
+          touch database/database.sqlite
+          php artisan migrate
+        working-directory: ./api # make sure to update path
+
+      - name: Run Laravel tests
+        run: php artisan test
+        working-directory: ./api
+
+      # Tests for Vue.js
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install npm dependencies (Vue.js)
+        run: npm install
+
+      - name: Run Vue.js tests
+        run: npm run test
+        working-directory: ./app # find package.json file direc
+
+      # Login to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.1.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Build and push Docker images
+      - name: Build and push Docker images (Laravel)
+        uses: docker/build-push-action@v5.3.0
+        with:
+          context: .
+          file: Dockerfile # Updated path to your Laravel Dockerfile
+          push: true
+          tags: souhailchaiberras/testpipeline:latest 
+      
+      
+
+      
