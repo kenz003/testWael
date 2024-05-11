@@ -36,6 +36,9 @@ jobs:
         working-directory: ./api
 
       - name: Run Laravel migrations (using SQLite for testing)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${{ github.workspace }}/api/database/database.sqlite
         run: |
           touch database/database.sqlite
           php artisan migrate
